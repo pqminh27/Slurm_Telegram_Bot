@@ -1,0 +1,20 @@
+{
+  "meta": {
+    "plugin": {
+      "type": "openapi\/v0.0.37",
+      "name": "Slurm OpenAPI v0.0.37"
+    },
+    "Slurm": {
+      "version": {
+        "major": 21,
+        "micro": 5,
+        "minor": 8
+      },
+      "release": "21.08.5"
+    }
+  },
+  "errors": [
+  ],
+  "jobs": [
+  ]
+}

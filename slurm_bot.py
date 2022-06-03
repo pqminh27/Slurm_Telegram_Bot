@@ -1,5 +1,5 @@
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update, Message, CallbackQuery
-from telegram.ext import Updater, InlineQueryHandler, CommandHandler, CallbackQueryHandler, MessageHandler, CallbackContext, Filters
+from telegram.ext import Updater, InlineQueryHandler, CommandHandler, CallbackQueryHandler, MessageHandler, CallbackContext, Filters, ConversationHandler
 import sys
 import json
 import requests
@@ -7,15 +7,40 @@ import re
 import os
 from datetime import datetime
 import time
+import psycopg2
+import aiogram
 
 TOKEN_API = "5372374960:AAGWFq5WLfldVTg-EvFJG6zao_4qbjDdQtw"
+connection = psycopg2.connect(dbname="fn1131_2021", user="student", password="bmstu", host="195.19.32.74",port="5432")
+
+INPUT_USERNAME, JOB_ID = range(2)
 
 def start_command(update: Update, context: CallbackContext):
+    #add chat_id of user into db with name
     update.message.reply_text(f"Welcome {update.effective_user.first_name} to Slurm Bot!!\nYou can call /help for more details!\nYour chat_id is {update.effective_user.id}")
+    update.message.reply_text("Please type in your username in db:")
+    return INPUT_USERNAME
+
+def insert_username_server_to_db(update: Update, context: CallbackContext):
+    # cursor = connection.cursor()
+    chat_id = update.message.chat_id
+    username = update.message.text
+    print(str(chat_id) + " - " + username)
+    # cursor.execute(f"select count(*) from slurm_user where telegram_id='{chat_id}' and username='{username}'")
+    # count = cursor.fetchone()[0]
+    # connection.commit()
+    # if not count:
+    #     cursor.execute(f"insert into slurm_user(telegram_id, username, status) values ('{chat_id}', '{username}', 'False')")
+    #     print(f"Inserted user {username} - {chat_id} into db")
+    # else:
+    #     print("You are already in our server!")
+    # cursor.close()
+    # update.message.reply_text(f"{update.effective_user.first_name} - {username} in our server")
+    return ConversationHandler.END
+
 
 def help_command(update: Update, context: CallbackContext):
     update.message.reply_text(f"All the commands:\n/start : To start;\n/help : To see all the commands;\n/sinfo : To see the information of sinfo;\n/squeue_all : See the squeue of jobs of all users;\n/squeue_your_jobs: See the squeue of your jobs;\n/scontrol {{job_id}} : See the scontrol show job id (id of job);\n/subscribe : To start receiving information about starting and ending jobs;\n/unsubscribe : To stop receiving information about starting and ending jobs")
-
 
 def read_file_json(filename):
     with open(filename, "r") as f:
@@ -109,9 +134,12 @@ def get_info_squeue_from_txt(update: Update, context: CallbackContext):
 
 def command_scontrol_show_job_jobid(job_id):
     os.system(f"scontrol show job {job_id} > job_{job_id}.txt")
+def get_input_jobid(update: Update, context: CallbackContext):
+    update.message.reply_text("Type your job id for scontrol show job:")
+    return JOB_ID
+
 def get_info_scontrol_show_job_jobid(update: Update, context: CallbackContext):
-    # update.message.reply_text("Type your job id for scontrol show job:")
-    job_id = update.message.text.split()[1]
+    job_id = update.message.text
     # while update.message.text.isnumeric() == False:
         # job_id = update.message.text
         # update.message.reply_text("You just entered not number id!!!")
@@ -119,17 +147,20 @@ def get_info_scontrol_show_job_jobid(update: Update, context: CallbackContext):
         # job_id = update.message.text
         command_scontrol_show_job_jobid(job_id)
         if os.stat(f"job_{job_id}.txt").st_size == 0:
-            update.message.reply_text("You just entered invalid job id!!")
+            update.message.reply_text("You just entered invalid job id!! If you want to show job id then call /scontrol again!")
             # os.system(f"rm -rf job_{job_id}.txt")
+            # return JOB_ID
         else:
             f = open(f"job_{job_id}.txt", "r")
             data = f.read()
             f.close()
             update.message.reply_text(data)
-        os.system(f"rm -rf job_{job_id}.txt")
-    else:
-        update.message.reply_text("You must enter your job id after /scontrol !!")
 
+        os.system(f"rm -rf job_{job_id}.txt")
+        return ConversationHandler.END
+    else:
+        update.message.reply_text("You must enter your job id as a number! Please enter your job id again!")
+        return JOB_ID
 
 def error_handler(update: Update, context: CallbackContext):
     print(f"ERROR: {context.error} caused by {update}")
@@ -168,20 +199,40 @@ def unsubscribe_receive_job_message(update: Update, context: CallbackContext):
     update.message.reply_text("You will stop receiving notifications about your jobs!!")
 
 def main():
-    #persistence=PicklePersistence(filename="bot_data")
+    #persistence=PicklePersistence(filename="bot_data"): To store data about history talking with bot
     updater: Updater = Updater(TOKEN_API, use_context=True)
+    
+    # updater.dispatcher.add_handler(CommandHandler("start", start_command))  # handling /start command
 
-    updater.dispatcher.add_handler(CommandHandler("start", start_command))  # handling /start command
+    conversation_handler_input_username= ConversationHandler(
+        entry_points=[CommandHandler("start", start_command)],
+        fallbacks=[],
+        states={
+            INPUT_USERNAME: [MessageHandler(Filters.text, insert_username_server_to_db)]
+        }
+    )
+
+    conversation_handler_input_jobid = ConversationHandler(
+        entry_points=[CommandHandler("scontrol", get_input_jobid)],
+        fallbacks=[],
+        states={
+            JOB_ID: [MessageHandler(Filters.text, get_info_scontrol_show_job_jobid)]
+        }
+    )
+    updater.dispatcher.add_handler(conversation_handler_input_username)
+    updater.dispatcher.add_handler(conversation_handler_input_jobid)
+
     updater.dispatcher.add_handler(CommandHandler("help", help_command))  # handling /help command
     updater.dispatcher.add_handler(CommandHandler("sinfo", get_info_sinfo)) #handling /sinfo command
     updater.dispatcher.add_handler(CommandHandler("squeue_all", get_info_squeue_from_json)) #handling /squeue commands
     updater.dispatcher.add_handler(CommandHandler("squeue_your_jobs", get_info_squeue_from_txt)) #handling /squeue --user=username command
-    updater.dispatcher.add_handler(CommandHandler("scontrol", get_info_scontrol_show_job_jobid)) #handling /scontrol command
+    # updater.dispatcher.add_handler(CommandHandler("scontrol", get_info_scontrol_show_job_jobid)) #handling /scontrol command
     
     # updater.dispatcher.add_handler(MessageHandler)
     updater.dispatcher.add_handler(CommandHandler("subscribe", subscribe_receive_job_message)) #handling /subscribe command
     updater.dispatcher.add_handler(CommandHandler("unsubscribe", unsubscribe_receive_job_message)) #handling /unsubscribe command
 
+    
     updater.dispatcher.add_error_handler(error_handler)
     updater.start_polling()
 

@@ -1,4 +1,4 @@
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, ReplyKeyboardMarkup, Update, Message, CallbackQuery
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, ReplyKeyboardMarkup, ReplyKeyboardRemove, Update, Message, CallbackQuery
 from telegram.ext import Updater, InlineQueryHandler, CommandHandler, CallbackQueryHandler, MessageHandler, CallbackContext, Filters, ConversationHandler
 import sys
 import json
@@ -10,21 +10,23 @@ import time
 import psycopg2
 import aiogram
 from dotenv import load_dotenv
+load_dotenv()
 
-f = open("config.json", "r")
-config = json.load(f)
+# f = open("config.json", "r")
+# config = json.load(f)
+# TOKEN_API = config["TOKEN_API"]
 
-TOKEN_API = config["TOKEN_API"]
-connection = psycopg2.connect(dbname=config["dbname"], user=config["user"], password=config["password"], host=config["host"],port=config["port"])
+TOKEN_API = os.getenv("TOKEN_API")
+connection = psycopg2.connect(dbname=os.getenv("dbname"), user=os.getenv("user"), password=os.getenv("password"), host=os.getenv("host"),port=os.getenv("port"))
 
-Start_string = config["Start_string"]
-Help_string = config["Help_string"]
-Get_notifications_string = config["Get_notifications_string"]
-Sinfo_string = config["Sinfo_string"]
-Squeue_all_string = config["Squeue_all_string"]
-Squeue_my_jobs_string = config["Squeue_my_jobs_string"]
-Scontrol_string = config["Scontrol_string"]
-Unsubscribe_string = config["Unsubscribe_string"]
+Start_string = os.getenv("Start_string")
+Help_string = os.getenv("Help_string")
+Get_notifications_string = os.getenv("Get_notifications_string")
+Sinfo_string = os.getenv("Sinfo_string")
+Squeue_all_string = os.getenv("Squeue_all_string")
+Squeue_my_jobs_string = os.getenv("Squeue_my_jobs_string")
+Scontrol_string = os.getenv("Scontrol_string")
+Unsubscribe_string = os.getenv("Unsubscribe_string")
 
 INPUT_USERNAME, JOB_ID = range(2)
 
@@ -137,6 +139,7 @@ def get_username_by_telegram_chat_id(chat_id):
         return ""
     else: 
         return username
+
 def get_info_squeue_from_txt(update: Update, context: CallbackContext):
     #db to get username
     username = get_username_by_telegram_chat_id(update.message.chat_id)
@@ -259,13 +262,15 @@ def unsubscribe_receive_job_message(update: Update, context: CallbackContext):
     cursor.execute(f"delete from slurm_user where telegram_id={update.message.chat_id}")
     connection.commit()
     cursor.close()
-    update.message.reply_text("You will stop receiving notifications about your jobs!!")
+    update.message.reply_text("You will stop receiving notifications about your jobs!! Goodbye!! To start with Slurm Bot again, call /start", reply_markup=ReplyKeyboardRemove())
+    return ConversationHandler.END
+
 
 def main():
     #persistence=PicklePersistence(filename="bot_data"): To store data about history talking with bot
     updater: Updater = Updater(TOKEN_API, use_context=True)
     
-    conversation_handler_input_username= ConversationHandler(
+    conversation_handler_input_username = ConversationHandler(
         entry_points=[CommandHandler("get_notifications", link_telegram_chat_id_with_username_in_server), MessageHandler(Filters.regex(Get_notifications_string), link_telegram_chat_id_with_username_in_server)],
         fallbacks=[],
         states={
@@ -280,7 +285,7 @@ def main():
             JOB_ID: [MessageHandler(Filters.text, get_info_scontrol_show_job_jobid)]
         }
     )
-    
+
     updater.dispatcher.add_handler(conversation_handler_input_username) #handling /get_notifications command and "get notifications" text
     updater.dispatcher.add_handler(conversation_handler_input_jobid) #handling /scontrol command and "scontrol" text
 

@@ -4,14 +4,15 @@ import time
 from datetime import datetime 
 import requests
 import psycopg2
+from dotenv import load_dotenv
+load_dotenv()
 
-f = open("config.json", "r")
-config = json.load(f)
-TOKEN_API = config["TOKEN_API"]
-connection = psycopg2.connect(dbname=config["dbname"], user=config["user"], password=config["password"], host=config["host"],port=config["port"])
+# f = open("config.json", "r")
+# config = json.load(f)
+# TOKEN_API = config["TOKEN_API"]
 
-
-# https://api.telegram.org/bot{TOKEN_API}/sendMessage?chat_id=<chat_id>&text=Привет%20мир
+TOKEN_API = os.getenv("TOKEN_API")
+connection = psycopg2.connect(dbname=os.getenv("dbname"), user=os.getenv("user"), password=os.getenv("password"), host=os.getenv("host"),port=os.getenv("port"))
 
 # import re
 # datetime_format = "%Y-%m-%dT%H:%M:%S"
@@ -32,14 +33,18 @@ def read_file_json(filename):
         return data
 
 def get_chat_id_from_db_by_username(username: str):
-# chat_id = 1210670436
     cursor = connection.cursor()
     cursor.execute(f"select telegram_id from slurm_user where username='{username}'")
-    chat_id = cursor.fetchone()[0]
+    chat_ids = cursor.fetchall()
+    #1 username can have many chat_id at telegram
+    ids = []
+    for id in chat_ids:
+        print(id[0])
+        ids.append(id[0])
+    # There is always at least telegram_id with username; username cannot be registered without telegram_id
     connection.commit()
     cursor.close()
-    return chat_id
-
+    return ids
 
 
 def command_squeue():
@@ -57,7 +62,7 @@ def get_info_squeue():
         job_name = job["name"]
         username = job["current_working_directory"].split("/")[2]
         # print(username)
-        chat_id = get_chat_id_from_db_by_username(username)
+        chat_ids = get_chat_id_from_db_by_username(username)
         # job_partition = job["partition"]
         # submit_time = datetime.fromtimestamp(job["submit_time"]).strftime('%Y-%m-%d %I:%M:%S %p')
         # job_state = job["job_state"]
@@ -74,15 +79,17 @@ def get_info_squeue():
         start_time = datetime.fromtimestamp(job["start_time"]).strftime('%Y-%m-%d %I:%M:%S %p')
         end_time = datetime.fromtimestamp(job["end_time"]).strftime('%Y-%m-%d %I:%M:%S %p')
         if job["start_time"]-time_stamp_now >= -1 and job["start_time"]-time_stamp_now <= 1:
-            start_msg = f"{username}'s {job_name} job (job_id: {job_id}) started running at {start_time}!"
-            URL = "https://api.telegram.org/bot"+TOKEN_API+"/sendMessage?chat_id="+str(chat_id)+"&text="+start_msg
-            requests.get(url=URL)
-            # https://api.telegram.org/bot5372374960:AAGWFq5WLfldVTg-EvFJG6zao_4qbjDdQtw/sendMessage?chat_id=1210670436&text=%22Test%22
+            for id in chat_ids:
+                start_msg = f"{username}'s {job_name} job (job_id: {job_id}) started running at {start_time}!"
+                URL = "https://api.telegram.org/bot"+TOKEN_API+"/sendMessage?chat_id="+str(id)+"&text="+start_msg
+                requests.get(url=URL)
+                # https://api.telegram.org/bot5372374960:AAGWFq5WLfldVTg-EvFJG6zao_4qbjDdQtw/sendMessage?chat_id=1210670436&text=%22Test%22
             
         if job["end_time"]-time_stamp_now >= -1 and job["end_time"]-time_stamp_now <= 1:
-            end_msg = f"{username}'s {job_name} job (job_id: {job_id}) ended at {end_time}!"
-            URL = "https://api.telegram.org/bot"+TOKEN_API+"/sendMessage?chat_id="+str(chat_id)+"&text="+end_msg
-            requests.get(url=URL)
+            for id in chat_ids:
+                end_msg = f"{username}'s {job_name} job (job_id: {job_id}) ended at {end_time}!"
+                URL = "https://api.telegram.org/bot"+TOKEN_API+"/sendMessage?chat_id="+str(id)+"&text="+end_msg
+                requests.get(url=URL)
 
 while True:
     get_info_squeue()

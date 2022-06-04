@@ -209,6 +209,20 @@ def error_handler(update: Update, context: CallbackContext):
     print(f"ERROR: {context.error} caused by {update}")
 
 def handle_text_message(update: Update, context: CallbackContext):
+    # match update.message.text:
+    #     case Start_string:
+    #         start_command(update, context)
+    #     case Help_string:
+    #         help_command(update, context)
+    #     case [Sinfo_string]:
+    #         get_info_sinfo(update, context)
+    #     case [Squeue_all_string]:
+    #         get_info_squeue_from_json(update, context)
+    #     case [Squeue_my_jobs_string]:
+    #         get_info_squeue_from_txt(update, context)
+    #     case [Unsubscribe_string]:
+    #         unsubscribe_receive_job_message(update, context)
+    
     if Start_string == update.message.text:
         start_command(update, context)
     elif Help_string == update.message.text:

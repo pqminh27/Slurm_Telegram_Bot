@@ -60,7 +60,7 @@ def insert_username_server_to_db(update: Update, context: CallbackContext):
     return ConversationHandler.END
 
 def help_command(update: Update, context: CallbackContext):
-    update.message.reply_text(f"All the commands:\n/start : To start with the bot;\n/help : To see all the commands;\n/get_notifications: To start receiving informations about starting and ending jobs;\n/sinfo : To see the information of sinfo;\n/squeue_all : See the squeue of jobs of all users;\n/squeue_your_jobs: See the squeue of your jobs;\n/scontrol : See scontrol show job_id;\n/unsubscribe : To stop receiving informations about starting and ending jobs")
+    update.message.reply_text(f"All the commands:\n/start : To start with the bot;\n/get_notifications: To start receiving informations about your jobs in server;\n/help : To see all the commands available;\n/sinfo : To see the information of sinfo;\n/squeue_all : See the squeue of jobs of all users;\n/squeue_your_jobs: See the squeue of your jobs;\n/scontrol : See scontrol show job_id;\n/unsubscribe : To stop receiving informations about starting and ending jobs")
 
 def read_file_json(filename):
     with open(filename, "r") as f:
@@ -83,46 +83,52 @@ def get_info_sinfo(update: Update, context: CallbackContext):
 def command_squeue_json():
     os.system("squeue --json > squeue.json")
 def get_info_squeue_from_json(update: Update, context: CallbackContext):
-    command_squeue_json()
-    data = read_file_json("squeue.json")
-    if len(data["jobs"]) == 0:
-        update.message.reply_text("There is no job of all users running right now!")
+    #Check if telegram_id is already in db or not, if not then reply_text("Please subscribe to our Slurm Bot by choosing "Start receiving notifications about my jobs")
+    username = get_username_by_telegram_chat_id(update.message.chat_id)
+    if username == "":
+        update.message.reply_text("You are not in our server! Please choose 'Start receiving notifications about my jobs'!")
+    
     else:
-        for job in data["jobs"]:
-            user_name = job["current_working_directory"].split("/")[2]
-            user_id = job["user_id"]
-            job_id = job["job_id"]
-            job_name = job["name"]
-            job_nodes = job["nodes"]
-            job_partition = job["partition"]
-            submit_time = datetime.fromtimestamp(job["submit_time"]).strftime('%Y-%m-%d %I:%M:%S %p')
-            job_state = job["job_state"]
-            start_time = datetime.fromtimestamp(job["start_time"]).strftime('%Y-%m-%d %I:%M:%S %p')
-            end_time = datetime.fromtimestamp(job["end_time"]).strftime('%Y-%m-%d %I:%M:%S %p')
-            text = f"Username: {user_name}\nUser_id: {user_id}\nJob_id: {str(job_id)}\nJob name: {job_name}\nNodes: {job_nodes}\nPartition: {job_partition}\nSubmit time: {submit_time}\nState: {job_state}\nStart time: {start_time}\nEnd time: {end_time}"
-            update.message.reply_text(text)
+        command_squeue_json()
+        data = read_file_json("squeue.json")
+        if len(data["jobs"]) == 0:
+            update.message.reply_text("There is no job of all users running right now!")
+        else:
+            for job in data["jobs"]:
+                user_name = job["current_working_directory"].split("/")[2]
+                user_id = job["user_id"]
+                job_id = job["job_id"]
+                job_name = job["name"]
+                job_nodes = job["nodes"]
+                job_partition = job["partition"]
+                submit_time = datetime.fromtimestamp(job["submit_time"]).strftime('%Y-%m-%d %I:%M:%S %p')
+                job_state = job["job_state"]
+                start_time = datetime.fromtimestamp(job["start_time"]).strftime('%Y-%m-%d %I:%M:%S %p')
+                end_time = datetime.fromtimestamp(job["end_time"]).strftime('%Y-%m-%d %I:%M:%S %p')
+                text = f"Username: {user_name}\nUser_id: {user_id}\nJob_id: {str(job_id)}\nJob name: {job_name}\nNodes: {job_nodes}\nPartition: {job_partition}\nSubmit time: {submit_time}\nState: {job_state}\nStart time: {start_time}\nEnd time: {end_time}"
+                update.message.reply_text(text)
 
-            # update.message.reply_text(f"job_id: {str(job_id)}")
-            # update.message.reply_text(f"name of job: {job_name}")
-            # update.message.reply_text(f"partition: {job_partition}")
-            # update.message.reply_text(f"submit time: {submit_time}")
-            # update.message.reply_text(f"state:  {job_state}")
-            # if(job_state == "CANCELED"):
-            #     update.message.reply_text(f"Your job is canceled!")
+                # update.message.reply_text(f"job_id: {str(job_id)}")
+                # update.message.reply_text(f"name of job: {job_name}")
+                # update.message.reply_text(f"partition: {job_partition}")
+                # update.message.reply_text(f"submit time: {submit_time}")
+                # update.message.reply_text(f"state:  {job_state}")
+                # if(job_state == "CANCELED"):
+                #     update.message.reply_text(f"Your job is canceled!")
 
-            # current_time_now = datetime.now().strftime('%Y-%m-%d %I:%M:%S %p')
-            # print(current_time_now)
-            # start_time = datetime.fromtimestamp(job["start_time"]).strftime('%Y-%m-%d %I:%M:%S %p')
-            # if current_time_now == start_time:
-            #     update.message.reply_text("Your job starts now!")
-            #     update.message.reply_text(f"start time: {start_time}")
+                # current_time_now = datetime.now().strftime('%Y-%m-%d %I:%M:%S %p')
+                # print(current_time_now)
+                # start_time = datetime.fromtimestamp(job["start_time"]).strftime('%Y-%m-%d %I:%M:%S %p')
+                # if current_time_now == start_time:
+                #     update.message.reply_text("Your job starts now!")
+                #     update.message.reply_text(f"start time: {start_time}")
 
-            # current_time_now = datetime.now().strftime('%Y-%m-%d %I:%M:%S %p')
-            # end_time = datetime.fromtimestamp(job["end_time"]).strftime('%Y-%m-%d %I:%M:%S %p')
-            # if current_time_now == end_time:
-            #     update.message.reply_text("Your job just ended!")
-            #     update.message.reply_text(f"end time: {end_time}")
-            # print()
+                # current_time_now = datetime.now().strftime('%Y-%m-%d %I:%M:%S %p')
+                # end_time = datetime.fromtimestamp(job["end_time"]).strftime('%Y-%m-%d %I:%M:%S %p')
+                # if current_time_now == end_time:
+                #     update.message.reply_text("Your job just ended!")
+                #     update.message.reply_text(f"end time: {end_time}")
+                # print()
     
 
 def command_squeue(username):
@@ -191,16 +197,15 @@ def get_info_scontrol_show_job_jobid(update: Update, context: CallbackContext):
             directory_output = f.readlines()[24].split("=")[1][0:-1]
             f.close()
             # os.system(f"rm -rf job_{job_id}.txt")
-
             if os.path.exists(directory_output) == True:
                 f_read_file_output = open(directory_output, "r")
                 update.message.reply_text(f"Output File:\n\n{f_read_file_output.read()}")
                 f_read_file_output.close()
             else:
                 update.message.reply_text("The file output doesn't exists!")
-
         os.system(f"rm -rf job_{job_id}.txt")
         return ConversationHandler.END
+
     else:
         update.message.reply_text("You must enter your job id as a number! Please enter your job id again!")
         return JOB_ID

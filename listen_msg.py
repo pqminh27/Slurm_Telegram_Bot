@@ -78,14 +78,14 @@ def get_info_squeue():
         # print(job["start_time"] - job["end_time"])
         start_time = datetime.fromtimestamp(job["start_time"]).strftime('%Y-%m-%d %I:%M:%S %p')
         end_time = datetime.fromtimestamp(job["end_time"]).strftime('%Y-%m-%d %I:%M:%S %p')
-        if job["start_time"]-time_stamp_now >= -1 and job["start_time"]-time_stamp_now <= 1:
+        if job["start_time"]-time_stamp_now>=-1 and job["start_time"]-time_stamp_now<=1:
             for id in chat_ids:
                 start_msg = f"{username}'s {job_name} job (job_id: {job_id}) started running at {start_time}!"
                 URL = "https://api.telegram.org/bot"+TOKEN_API+"/sendMessage?chat_id="+str(id)+"&text="+start_msg
                 requests.get(url=URL)
                 # https://api.telegram.org/bot5372374960:AAGWFq5WLfldVTg-EvFJG6zao_4qbjDdQtw/sendMessage?chat_id=1210670436&text=%22Test%22
             
-        if job["end_time"]-time_stamp_now >= -1 and job["end_time"]-time_stamp_now <= 1:
+        if job["end_time"]-time_stamp_now>=-1 and job["end_time"]-time_stamp_now<=1:
             for id in chat_ids:
                 end_msg = f"{username}'s {job_name} job (job_id: {job_id}) ended at {end_time}!"
                 URL = "https://api.telegram.org/bot"+TOKEN_API+"/sendMessage?chat_id="+str(id)+"&text="+end_msg

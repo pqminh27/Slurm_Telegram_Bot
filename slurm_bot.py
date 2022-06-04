@@ -32,7 +32,7 @@ INPUT_USERNAME, JOB_ID = range(2)
 
 def start_command(update: Update, context: CallbackContext):
     
-    buttons = [[KeyboardButton(Start_string), KeyboardButton(Help_string), KeyboardButton(Get_notifications_string), KeyboardButton(Sinfo_string)], [KeyboardButton(Squeue_all_string), KeyboardButton(Squeue_my_jobs_string), KeyboardButton(Scontrol_string), KeyboardButton(Unsubscribe_string)]]
+    buttons = [[KeyboardButton(Start_string), KeyboardButton(Get_notifications_string), KeyboardButton(Help_string), KeyboardButton(Sinfo_string)], [KeyboardButton(Squeue_all_string), KeyboardButton(Squeue_my_jobs_string), KeyboardButton(Scontrol_string), KeyboardButton(Unsubscribe_string)]]
     reply_markup=ReplyKeyboardMarkup(buttons)
     update.message.reply_text(f"Welcome {update.effective_user.first_name} {update.effective_user.last_name} to Slurm Bot!!\nYou can call /help for more details!\nYour chat_id is {update.effective_user.id}", reply_markup=reply_markup)
    
@@ -52,7 +52,7 @@ def insert_username_server_to_db(update: Update, context: CallbackContext):
     if count == 0:
         cursor.execute(f"insert into slurm_user(telegram_id, username, status) values ({chat_id}, '{username}', False)")
         connection.commit()
-        print(f"Inserted user {username} - {chat_id} into db")
+        # print(f"Inserted user {username} - {chat_id} into db")
         update.message.reply_text(f"Welcome {update.effective_user.first_name} - {username} to our Slurm Bot!")
     elif count > 0:
         update.message.reply_text(f"You are already in our server with username: {username}")
@@ -131,20 +131,20 @@ def command_squeue(username):
 def get_username_by_telegram_chat_id(chat_id):
     cursor = connection.cursor()
     cursor.execute(f"select username from slurm_user where telegram_id={chat_id}")
-    username = cursor.fetchone()[0]
-    print(username)
+    username = cursor.fetchone()
+    # print(username)
     connection.commit()
     cursor.close()
-    if len(username) == 0:
+    if username is None:
         return ""
     else: 
-        return username
+        return username[0]
 
 def get_info_squeue_from_txt(update: Update, context: CallbackContext):
     #db to get username
     username = get_username_by_telegram_chat_id(update.message.chat_id)
     if username == "":
-        update.message.reply_text("You are not in our server! Please subscribe to get notifications!")
+        update.message.reply_text("You are not in our server! Please choose 'Start receiving notifications about my jobs'!")
     else:
         command_squeue(username)
         # print(os.path.exists("squeue.txt"))

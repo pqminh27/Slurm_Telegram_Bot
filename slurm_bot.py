@@ -53,14 +53,14 @@ def insert_username_server_to_db(update: Update, context: CallbackContext):
         cursor.execute(f"insert into slurm_user(telegram_id, username, status) values ({chat_id}, '{username}', False)")
         connection.commit()
         # print(f"Inserted user {username} - {chat_id} into db")
-        update.message.reply_text(f"Welcome {update.effective_user.first_name} - {username} to our Slurm Bot!")
+        update.message.reply_text(f"Welcome {update.effective_user.first_name} {update.effective_user.last_name} - {username} to our Slurm Bot!")
     elif count > 0:
         update.message.reply_text(f"You are already in our server with username: {username}")
     cursor.close()
     return ConversationHandler.END
 
 def help_command(update: Update, context: CallbackContext):
-    update.message.reply_text(f"All the commands:\n/start : To start with the bot;\n/get_notifications: To start receiving informations about your jobs in server;\n/help : To see all the commands available;\n/sinfo : To see the information of sinfo;\n/squeue_all : See the squeue of jobs of all users;\n/squeue_your_jobs: See the squeue of your jobs;\n/scontrol : See scontrol show job_id;\n/unsubscribe : To stop receiving informations about starting and ending jobs")
+    update.message.reply_text(f"All the commands:\n/start : To start with the bot;\n/get_notifications: To start receiving informations about your jobs in server;\n/help : To see all the commands available;\n/sinfo : To see the information of sinfo;\n/squeue_all : See the squeue of jobs of all users;\n/squeue_your_jobs: See the squeue of your jobs;\n/scontrol : See scontrol show job_id;\n/unsubscribe : To stop receiving informations about starting and ending jobs\nNOTES: If you want to change your username in our server, please call /unsubscribe first and then call /get_notifications")
 
 def read_file_json(filename):
     with open(filename, "r") as f:
@@ -137,6 +137,7 @@ def command_squeue(username):
 def get_username_by_telegram_chat_id(chat_id):
     cursor = connection.cursor()
     cursor.execute(f"select username from slurm_user where telegram_id={chat_id}")
+    # Take the first username by telegram_id
     username = cursor.fetchone()
     # print(username)
     connection.commit()

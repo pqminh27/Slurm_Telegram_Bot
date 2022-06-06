@@ -39,7 +39,7 @@ def get_chat_id_from_db_by_username(username: str):
     #1 username can have many chat_id at telegram
     ids = []
     for id in chat_ids:
-        print(id[0])
+        # print(id[0])
         ids.append(id[0])
     # There is always at least telegram_id with username; username cannot be registered without telegram_id
     connection.commit()

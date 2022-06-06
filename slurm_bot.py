@@ -101,10 +101,10 @@ def get_info_squeue_from_json(update: Update, context: CallbackContext):
                 job_name = job["name"]
                 job_nodes = job["nodes"]
                 job_partition = job["partition"]
-                submit_time = datetime.fromtimestamp(job["submit_time"]).strftime('%Y-%m-%d %I:%M:%S %p')
+                submit_time = datetime.fromtimestamp(job["submit_time"]).strftime('%d/%m/%Y %I:%M:%S %p')
                 job_state = job["job_state"]
-                start_time = datetime.fromtimestamp(job["start_time"]).strftime('%Y-%m-%d %I:%M:%S %p')
-                end_time = datetime.fromtimestamp(job["end_time"]).strftime('%Y-%m-%d %I:%M:%S %p')
+                start_time = datetime.fromtimestamp(job["start_time"]).strftime('%d/%m/%Y %I:%M:%S %p')
+                end_time = datetime.fromtimestamp(job["end_time"]).strftime('%d/%m/%Y %I:%M:%S %p')
                 text = f"Username: {user_name}\nUser_id: {user_id}\nJob_id: {str(job_id)}\nJob name: {job_name}\nNodes: {job_nodes}\nPartition: {job_partition}\nSubmit time: {submit_time}\nState: {job_state}\nStart time: {start_time}\nEnd time: {end_time}"
                 update.message.reply_text(text)
 

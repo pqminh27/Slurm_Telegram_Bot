@@ -55,7 +55,7 @@ def get_info_squeue():
     # time_stamp_now = int(round(datetime.now().timestamp()))
     current_time = datetime.now()
     time_stamp_now = int(round(current_time.timestamp()))
-    current_time_right_format = current_time.strftime('%Y-%m-%d %I:%M:%S %p')
+    current_time_right_format = current_time.strftime('%d/%m/%Y %I:%M:%S %p')
     # print(current_time_right_format)
     for job in data["jobs"]:
         job_id = job["job_id"]
@@ -76,8 +76,8 @@ def get_info_squeue():
         # print("submit time: " + submit_time)
         # print("state: " + job_state)
         # print(job["start_time"] - job["end_time"])
-        start_time = datetime.fromtimestamp(job["start_time"]).strftime('%Y-%m-%d %I:%M:%S %p')
-        end_time = datetime.fromtimestamp(job["end_time"]).strftime('%Y-%m-%d %I:%M:%S %p')
+        start_time = datetime.fromtimestamp(job["start_time"]).strftime('%d/%m/%Y %I:%M:%S %p')
+        end_time = datetime.fromtimestamp(job["end_time"]).strftime('%d/%m/%Y %I:%M:%S %p')
         if job["start_time"]-time_stamp_now>-2 and job["start_time"]-time_stamp_now<2:
             for id in chat_ids:
                 start_msg = f"{username}'s {job_name} job (job_id: {job_id}) started running at {start_time}!"

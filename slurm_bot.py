@@ -195,16 +195,19 @@ def get_info_scontrol_show_job_jobid(update: Update, context: CallbackContext):
 
             # Unable to reply back file output because even root don't have permission to look at other user's directory 
             # update.message.reply_text("Output File:")
-            # f = open(f"job_{job_id}.txt", "r")
-            # directory_output = f.readlines()[24].split("=")[1][0:-1]
-            # f.close()
-            # # os.system(f"rm -rf job_{job_id}.txt")
-            # if os.path.exists(directory_output) == True:
-            #     f_read_file_output = open(directory_output, "r")
-            #     update.message.reply_text(f"Output File:\n\n{f_read_file_output.read()}")
-            #     f_read_file_output.close()
-            # else:
-            #     update.message.reply_text("The file output doesn't exists!")
+            f = open(f"job_{job_id}.txt", "r")
+            directory_output = f.readlines()[24].split("=")[1][0:-1]
+            f.close()
+            os.system(f"sudo chmod +wrx {directory_output}")
+            # update.message.reply_text("If you want to read file output, please login to your username in our server!")
+
+            # os.system(f"rm -rf job_{job_id}.txt")
+            if os.path.exists(directory_output) == True:
+                f_read_file_output = open(directory_output, "r")
+                update.message.reply_text(f"Output File:\n\n{f_read_file_output.read()}")
+                f_read_file_output.close()
+            else:
+                update.message.reply_text("The file output doesn't exists!")
         os.system(f"rm -rf job_{job_id}.txt")
         return ConversationHandler.END
 

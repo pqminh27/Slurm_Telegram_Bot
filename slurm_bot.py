@@ -30,8 +30,8 @@ Squeue_my_jobs_string = os.getenv("Squeue_my_jobs_string")
 Scontrol_string = os.getenv("Scontrol_string")
 Unsubscribe_string = os.getenv("Unsubscribe_string")
 
-sudo_user = "pm"
-sudo_password = "1"
+sudo_user = os.getenv("sudo_user")
+sudo_password = os.getenv("sudo_password")
 # user_name = "new1"
 # password = "new"
 

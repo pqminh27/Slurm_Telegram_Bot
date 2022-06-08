@@ -9,6 +9,8 @@ from datetime import datetime
 import time
 import psycopg2
 import aiogram
+import asyncio
+import pexpect
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -28,36 +30,78 @@ Squeue_my_jobs_string = os.getenv("Squeue_my_jobs_string")
 Scontrol_string = os.getenv("Scontrol_string")
 Unsubscribe_string = os.getenv("Unsubscribe_string")
 
-INPUT_USERNAME, JOB_ID = range(2)
+sudo_user = "pm"
+sudo_password = "1"
+# user_name = "new1"
+# password = "new"
+
+INPUT_USERNAME, INPUT_PASSWORD, JOB_ID = range(3)
 
 def start_command(update: Update, context: CallbackContext):
-    
     buttons = [[KeyboardButton(Start_string), KeyboardButton(Get_notifications_string), KeyboardButton(Help_string), KeyboardButton(Sinfo_string)], [KeyboardButton(Squeue_all_string), KeyboardButton(Squeue_my_jobs_string), KeyboardButton(Scontrol_string), KeyboardButton(Unsubscribe_string)]]
     reply_markup=ReplyKeyboardMarkup(buttons)
     update.message.reply_text(f"Welcome {update.effective_user.first_name} {update.effective_user.last_name} to Slurm Bot!!\nYou can call /help for more details!\nYour chat_id is {update.effective_user.id}", reply_markup=reply_markup)
    
+def check_valid_username_password_in_server(username: str, password: str):
+    child = pexpect.spawn(f'/usr/bin/sudo /usr/bin/login {username}', encoding='utf-8')
+    child.expect_exact(f'[sudo] password for {sudo_user}: ')
+    child.sendline(sudo_password)
+    return_code = child.expect(['Sorry, try again', 'Password: '])
+    if return_code == 0:
+        # print('Can\'t sudo')
+        # print(child.after)  # debug
+        child.kill(0)
+        return "FAIL"
+    else:
+        child.sendline(password)
+        return_code = child.expect(['Login incorrect', '[#\\$] '])
+        if return_code == 0:
+            # print('Can\'t login')
+            # print(child.after)  # debug
+            child.kill(0)
+            return "FAIL"
+        elif return_code == 1:
+            # print('Login OK.')
+            # print('Shell command prompt', child.after)
+            return "OK"
 
 def link_telegram_chat_id_with_username_in_server(update: Update, context: CallbackContext):
     update.message.reply_text("Please enter your name in server:")
     return INPUT_USERNAME
 
+def get_password_after_username(update: Update, context: CallbackContext):
+    context.user_data["username"] = update.message.text
+    update.message.reply_text("Password:")
+    return INPUT_PASSWORD
+
 def insert_username_server_to_db(update: Update, context: CallbackContext):
     cursor = connection.cursor()
     chat_id = update.message.chat_id
-    username = update.message.text
+    # username = update.message.text
+    # context.user_data["password"] = update.message.text
+    password = update.message.text
+    username = context.user_data["username"]
     # print(str(chat_id) + " - " + username)
-    cursor.execute(f"select count(*) from slurm_user where username='{username}' and telegram_id={chat_id}")
-    count = cursor.fetchone()[0]
-    connection.commit()
-    if count == 0:
-        cursor.execute(f"insert into slurm_user(telegram_id, username, status) values ({chat_id}, '{username}', False)")
+    # Check with password in server
+    # print(username + password)
+    check_result = check_valid_username_password_in_server(username, password)
+    # check_result = await check_valid_result
+    if check_result == "FAIL":
+        update.message.reply_text("Your username or password is incorrect! Please choose /get_notifications or 'Starting receiving notifications about my jobs' again!")
+        return ConversationHandler.END
+    elif check_result == "OK":
+        cursor.execute(f"select count(*) from slurm_user where username='{username}' and telegram_id={chat_id}")
+        count = cursor.fetchone()[0]
         connection.commit()
-        # print(f"Inserted user {username} - {chat_id} into db")
-        update.message.reply_text(f"Welcome {update.effective_user.first_name} {update.effective_user.last_name} - {username} to our Slurm Bot!")
-    elif count > 0:
-        update.message.reply_text(f"You are already in our server with username: {username}")
-    cursor.close()
-    return ConversationHandler.END
+        if count == 0:
+            cursor.execute(f"insert into slurm_user(telegram_id, username, status) values ({chat_id}, '{username}', False)")
+            connection.commit()
+            # print(f"Inserted user {username} - {chat_id} into db")
+            update.message.reply_text(f"Welcome {update.effective_user.first_name} {update.effective_user.last_name} - {username} to our Slurm Bot!")
+        elif count > 0:
+            update.message.reply_text(f"You are already in our server with username: {username}")
+        cursor.close()
+        return ConversationHandler.END
 
 def help_command(update: Update, context: CallbackContext):
     update.message.reply_text(f"All the commands:\n/start : To start with the bot;\n/get_notifications: To start receiving informations about your jobs in server;\n/help : To see all the commands available;\n/sinfo : To see the information of sinfo;\n/squeue_all : See the squeue of jobs of all users;\n/squeue_your_jobs: See the squeue of your jobs;\n/scontrol : See scontrol show job_id;\n/unsubscribe : To stop receiving informations about starting and ending jobs\nNOTES: If you want to change your username in our server, please call /unsubscribe first and then call /get_notifications")
@@ -195,19 +239,19 @@ def get_info_scontrol_show_job_jobid(update: Update, context: CallbackContext):
 
             # Unable to reply back file output because even root don't have permission to look at other user's directory 
             # update.message.reply_text("Output File:")
-            f = open(f"job_{job_id}.txt", "r")
-            directory_output = f.readlines()[24].split("=")[1][0:-1]
-            f.close()
-            os.system(f"sudo chmod +wrx {directory_output}")
+            # f = open(f"job_{job_id}.txt", "r")
+            # directory_output = f.readlines()[24].split("=")[1][0:-1]
+            # f.close()
+            # os.system(f"echo root | sudo -u root --stdin chmod +wrx {directory_output}")
             # update.message.reply_text("If you want to read file output, please login to your username in our server!")
 
             # os.system(f"rm -rf job_{job_id}.txt")
-            if os.path.exists(directory_output) == True:
-                f_read_file_output = open(directory_output, "r")
-                update.message.reply_text(f"Output File:\n\n{f_read_file_output.read()}")
-                f_read_file_output.close()
-            else:
-                update.message.reply_text("The file output doesn't exists!")
+            # if os.path.exists(directory_output) == True:
+            #     f_read_file_output = open(directory_output, "r")
+            #     update.message.reply_text(f"Output File:\n\n{f_read_file_output.read()}")
+            #     f_read_file_output.close()
+            # else:
+            #     update.message.reply_text("Cannot open the output file!")
         os.system(f"rm -rf job_{job_id}.txt")
         return ConversationHandler.END
 
@@ -298,9 +342,15 @@ def main():
         entry_points=[CommandHandler("get_notifications", link_telegram_chat_id_with_username_in_server), MessageHandler(Filters.regex(Get_notifications_string), link_telegram_chat_id_with_username_in_server)],
         fallbacks=[],
         states={
-            INPUT_USERNAME: [MessageHandler(Filters.text, insert_username_server_to_db)]
+            INPUT_USERNAME: [MessageHandler(Filters.text, get_password_after_username)],
+            INPUT_PASSWORD: [MessageHandler(Filters.text, insert_username_server_to_db)]
         }
     )
+
+    # conversation_handler_input_password = ConversationHandler(
+    #     entry_points=[],
+
+    # )
 
     conversation_handler_input_jobid = ConversationHandler(
         entry_points=[CommandHandler("scontrol", get_input_jobid), MessageHandler(Filters.regex(Scontrol_string), get_input_jobid)],

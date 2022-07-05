@@ -14,10 +14,6 @@ import pexpect
 from dotenv import load_dotenv
 load_dotenv()
 
-# f = open("config.json", "r")
-# config = json.load(f)
-# TOKEN_API = config["TOKEN_API"]
-
 TOKEN_API = os.getenv("TOKEN_API")
 connection = psycopg2.connect(dbname=os.getenv("dbname"), user=os.getenv("user"), password=os.getenv("password"), host=os.getenv("host"),port=os.getenv("port"))
 
@@ -32,8 +28,6 @@ Unsubscribe_string = os.getenv("Unsubscribe_string")
 
 sudo_user = os.getenv("sudo_user")
 sudo_password = os.getenv("sudo_password")
-# user_name = "new1"
-# password = "new"
 
 INPUT_USERNAME, INPUT_PASSWORD, JOB_ID = range(3)
 
@@ -48,21 +42,15 @@ def check_valid_username_password_in_server(username: str, password: str):
     child.sendline(sudo_password)
     return_code = child.expect(['Sorry, try again', 'Password: '])
     if return_code == 0:
-        # print('Can\'t sudo')
-        # print(child.after)  # debug
         child.kill(0)
         return "FAIL"
     else:
         child.sendline(password)
         return_code = child.expect(['Login incorrect', '[#\\$] '])
         if return_code == 0:
-            # print('Can\'t login')
-            # print(child.after)  # debug
             child.kill(0)
             return "FAIL"
         elif return_code == 1:
-            # print('Login OK.')
-            # print('Shell command prompt', child.after)
             return "OK"
 
 def link_telegram_chat_id_with_username_in_server(update: Update, context: CallbackContext):
@@ -77,15 +65,9 @@ def get_password_after_username(update: Update, context: CallbackContext):
 def insert_username_server_to_db(update: Update, context: CallbackContext):
     cursor = connection.cursor()
     chat_id = update.message.chat_id
-    # username = update.message.text
-    # context.user_data["password"] = update.message.text
     password = update.message.text
     username = context.user_data["username"]
-    # print(str(chat_id) + " - " + username)
-    # Check with password in server
-    # print(username + password)
     check_result = check_valid_username_password_in_server(username, password)
-    # check_result = await check_valid_result
     if check_result == "FAIL":
         update.message.reply_text("Your username or password is incorrect! Please choose /get_notifications or 'Starting receiving notifications about my jobs' again!")
         return ConversationHandler.END
@@ -96,7 +78,6 @@ def insert_username_server_to_db(update: Update, context: CallbackContext):
         if count == 0:
             cursor.execute(f"insert into slurm_user(telegram_id, username, status) values ({chat_id}, '{username}', False)")
             connection.commit()
-            # print(f"Inserted user {username} - {chat_id} into db")
             update.message.reply_text(f"Welcome {update.effective_user.first_name} {update.effective_user.last_name} - {username} to our Slurm Bot!")
         elif count > 0:
             update.message.reply_text(f"You are already in our server with username: {username}")
@@ -121,13 +102,11 @@ def get_info_sinfo(update: Update, context: CallbackContext):
         for node in data["nodes"]:
             text =  "Partition: " + node["partitions"][0] + "\nState: "+node["state"] + "\nHostname: " + node["hostname"]+ "\nNodes: " + str(nodes_count)+"\nResources: "+node["tres"]
             update.message.reply_text(text)
-        # return data
     else: update.message.reply_text("There is 0 Node running now!")
 
 def command_squeue_json():
     os.system("squeue --json > squeue.json")
 def get_info_squeue_from_json(update: Update, context: CallbackContext):
-    #Check if telegram_id is already in db or not, if not then reply_text("Please subscribe to our Slurm Bot by choosing "Start receiving notifications about my jobs")
     username = get_username_by_telegram_chat_id(update.message.chat_id)
     if username == "":
         update.message.reply_text("You are not in our server! Please choose 'Start receiving notifications about my jobs'!")
@@ -152,29 +131,6 @@ def get_info_squeue_from_json(update: Update, context: CallbackContext):
                 text = f"Username: {user_name}\nUser_id: {user_id}\nJob_id: {str(job_id)}\nJob name: {job_name}\nNodes: {job_nodes}\nPartition: {job_partition}\nSubmit time: {submit_time}\nState: {job_state}\nStart time: {start_time}\nEnd time: {end_time}"
                 update.message.reply_text(text)
 
-                # update.message.reply_text(f"job_id: {str(job_id)}")
-                # update.message.reply_text(f"name of job: {job_name}")
-                # update.message.reply_text(f"partition: {job_partition}")
-                # update.message.reply_text(f"submit time: {submit_time}")
-                # update.message.reply_text(f"state:  {job_state}")
-                # if(job_state == "CANCELED"):
-                #     update.message.reply_text(f"Your job is canceled!")
-
-                # current_time_now = datetime.now().strftime('%Y-%m-%d %I:%M:%S %p')
-                # print(current_time_now)
-                # start_time = datetime.fromtimestamp(job["start_time"]).strftime('%Y-%m-%d %I:%M:%S %p')
-                # if current_time_now == start_time:
-                #     update.message.reply_text("Your job starts now!")
-                #     update.message.reply_text(f"start time: {start_time}")
-
-                # current_time_now = datetime.now().strftime('%Y-%m-%d %I:%M:%S %p')
-                # end_time = datetime.fromtimestamp(job["end_time"]).strftime('%Y-%m-%d %I:%M:%S %p')
-                # if current_time_now == end_time:
-                #     update.message.reply_text("Your job just ended!")
-                #     update.message.reply_text(f"end time: {end_time}")
-                # print()
-    
-
 def command_squeue(username):
     command = f"squeue --states=all --user={username} > squeue.txt"
     os.system(command)
@@ -192,17 +148,11 @@ def get_username_by_telegram_chat_id(chat_id):
         return username[0]
 
 def get_info_squeue_from_txt(update: Update, context: CallbackContext):
-    #db to get username
     username = get_username_by_telegram_chat_id(update.message.chat_id)
     if username == "":
         update.message.reply_text("You are not in our server! Please choose 'Start receiving notifications about my jobs'!")
     else:
         command_squeue(username)
-        # print(os.path.exists("squeue.txt"))
-        # Check to see if file exist or not
-        # if os.path.exists("squeue.txt") == False:
-        #     update.message.reply_text("You don't have any job running now!")
-        # else:
         f = open("squeue.txt","r")
         f.readline()
         lines = f.readlines()
@@ -223,38 +173,15 @@ def get_input_jobid(update: Update, context: CallbackContext):
 
 def get_info_scontrol_show_job_jobid(update: Update, context: CallbackContext):
     job_id = update.message.text
-    # while update.message.text.isnumeric() == False:
-        # job_id = update.message.text
-        # update.message.reply_text("You just entered not number id!!!")
     if job_id.isnumeric() == True: 
-        # job_id = update.message.text
         command_scontrol_show_job_jobid(job_id)
         if os.stat(f"job_{job_id}.txt").st_size == 0:
             update.message.reply_text("You just entered invalid job id!! If you want to show job id then call /scontrol again!")
-            # os.system(f"rm -rf job_{job_id}.txt")
-            # return JOB_ID
         else:
             f_data = open(f"job_{job_id}.txt", "r")
             update.message.reply_text(f_data.read())
-
-            # Unable to reply back file output because even root don't have permission to look at other user's directory 
-            # update.message.reply_text("Output File:")
-            # f = open(f"job_{job_id}.txt", "r")
-            # directory_output = f.readlines()[24].split("=")[1][0:-1]
-            # f.close()
-            # os.system(f"echo root | sudo -u root --stdin chmod +wrx {directory_output}")
-            # update.message.reply_text("If you want to read file output, please login to your username in our server!")
-
-            # os.system(f"rm -rf job_{job_id}.txt")
-            # if os.path.exists(directory_output) == True:
-            #     f_read_file_output = open(directory_output, "r")
-            #     update.message.reply_text(f"Output File:\n\n{f_read_file_output.read()}")
-            #     f_read_file_output.close()
-            # else:
-            #     update.message.reply_text("Cannot open the output file!")
         os.system(f"rm -rf job_{job_id}.txt")
         return ConversationHandler.END
-
     else:
         update.message.reply_text("You must enter your job id as a number! Please enter your job id again!")
         return JOB_ID
@@ -263,26 +190,10 @@ def error_handler(update: Update, context: CallbackContext):
     print(f"ERROR: {context.error} caused by {update}")
 
 def handle_text_message(update: Update, context: CallbackContext):
-    # match update.message.text:
-    #     case Start_string:
-    #         start_command(update, context)
-    #     case Help_string:
-    #         help_command(update, context)
-    #     case [Sinfo_string]:
-    #         get_info_sinfo(update, context)
-    #     case [Squeue_all_string]:
-    #         get_info_squeue_from_json(update, context)
-    #     case [Squeue_my_jobs_string]:
-    #         get_info_squeue_from_txt(update, context)
-    #     case [Unsubscribe_string]:
-    #         unsubscribe_receive_job_message(update, context)
-    
     if Start_string == update.message.text:
         start_command(update, context)
     elif Help_string == update.message.text:
         help_command(update, context)
-    # elif "get notifications" == update.message.text:      ##############################
-    #     link_telegram_chat_id_with_username_in_server(update, context)
     elif Sinfo_string == update.message.text:
         get_info_sinfo(update, context)
     elif Squeue_all_string == update.message.text:
@@ -291,41 +202,8 @@ def handle_text_message(update: Update, context: CallbackContext):
         get_info_squeue_from_txt(update, context)
     elif Unsubscribe_string == update.message.text:
         unsubscribe_receive_job_message(update, context)
-    # elif "scontrol" == update.message.text:         ##############################
-    #     get_input_jobid(update, context)
-        
 
-# def button(update, context):
-#     query: CallbackQuery = update.callback_query
-#     query.answer()
-#     query.edit_message_text(text="Selected option: {}".format(query.data))
-
-# def send_message_start_or_end_job():
-#     command_squeue()
-#     data = read_file_json("squeue.json")
-#     if len(data["jobs"]) == 0:
-#         print("There is no Job running now!")
-#     else:
-#         current_time_now = datetime.now().strftime('%Y-%m-%d %I:%M:%S %p')
-#         for job in data["jobs"]:
-#             start_time = datetime.fromtimestamp(job["start_time"]).strftime('%Y-%m-%d %I:%M:%S %p')
-#             end_time = datetime.fromtimestamp(job["end_time"]).strftime('%Y-%m-%d %I:%M:%S %p')
-#             if(current_time_now == start_time):
-#                 print(f"Your job started running at {start_time}!")
-#             if(current_time_now == end_time):
-#                 print(f"Your job ended at {end_time}")
-
-#def get_subscribe_status_in_db():
-# subscribe_to_msg = False
-
-#Change subscribe at db to True
-# def subscribe_receive_job_message(update: Update, context: CallbackContext):
-#     subscribe_to_msg = True
-#     update.message.reply_text("You will receive notifications about your jobs from now!!")
-
-#Change subscribe at db to False
 def unsubscribe_receive_job_message(update: Update, context: CallbackContext):
-    # subscribe_to_msg = False
     cursor = connection.cursor()
     cursor.execute(f"delete from slurm_user where telegram_id={update.message.chat_id}")
     connection.commit()
@@ -335,9 +213,7 @@ def unsubscribe_receive_job_message(update: Update, context: CallbackContext):
 
 
 def main():
-    #persistence=PicklePersistence(filename="bot_data"): To store data about history talking with bot
     updater: Updater = Updater(TOKEN_API, use_context=True)
-    
     conversation_handler_input_username = ConversationHandler(
         entry_points=[CommandHandler("get_notifications", link_telegram_chat_id_with_username_in_server), MessageHandler(Filters.regex(Get_notifications_string), link_telegram_chat_id_with_username_in_server)],
         fallbacks=[],
@@ -346,12 +222,6 @@ def main():
             INPUT_PASSWORD: [MessageHandler(Filters.text, insert_username_server_to_db)]
         }
     )
-
-    # conversation_handler_input_password = ConversationHandler(
-    #     entry_points=[],
-
-    # )
-
     conversation_handler_input_jobid = ConversationHandler(
         entry_points=[CommandHandler("scontrol", get_input_jobid), MessageHandler(Filters.regex(Scontrol_string), get_input_jobid)],
         fallbacks=[],
@@ -368,16 +238,12 @@ def main():
     updater.dispatcher.add_handler(CommandHandler("sinfo", get_info_sinfo)) #handling /sinfo command
     updater.dispatcher.add_handler(CommandHandler("squeue_all", get_info_squeue_from_json)) #handling /squeue commands
     updater.dispatcher.add_handler(CommandHandler("squeue_your_jobs", get_info_squeue_from_txt)) #handling /squeue --user=username command
-    
-    # updater.dispatcher.add_handler(CommandHandler("subscribe", subscribe_receive_job_message)) #handling /subscribe command
     updater.dispatcher.add_handler(CommandHandler("unsubscribe", unsubscribe_receive_job_message)) #handling /unsubscribe command
 
     updater.dispatcher.add_handler(MessageHandler(Filters.text, handle_text_message)) #handling text message
     updater.dispatcher.add_error_handler(error_handler)
     updater.start_polling()
-
     # Keep the program running until interrupted
     updater.idle()
-
 if __name__ == '__main__':
     main()

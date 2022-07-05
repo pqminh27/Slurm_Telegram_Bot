@@ -34,11 +34,9 @@ def command_squeue():
 def get_info_squeue():
     command_squeue()
     data = read_file_json("squeue.json")
-    # time_stamp_now = int(round(datetime.now().timestamp()))
     current_time = datetime.now()
     time_stamp_now = int(round(current_time.timestamp()))
     current_time_right_format = current_time.strftime('%d/%m/%Y %I:%M:%S %p')
-    # print(current_time_right_format)
     for job in data["jobs"]:
         job_id = job["job_id"]
         job_name = job["name"]
